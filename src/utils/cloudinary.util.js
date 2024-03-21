@@ -1,4 +1,5 @@
 import { v2 as cloudinary } from "cloudinary"; // import cloudinary
+import { log } from "console";
 import fs from 'fs'; // import file system inlcuded with node
 
 
@@ -29,7 +30,27 @@ const uploadOnCloudinary = async (localFilePath) => {
     }
 }
 
+// creating a utility to delete resource on already stored in cloudinary
+const deleteFromCloudinary = async (publicID) => {
+    // public id is extracted from url 
+    try {
+        if (!publicID) {
+            return // if there is no cloudinaryUrl simply return
+        }
+        // destroy the resource on the cloudinary and return response
+        const result = await cloudinary.uploader.destroy(publicID, {
+            resource_type : 'image'
+        })
+
+        return result
+
+    } catch (error) {
+        console.log(error.message)
+        return
+    }
+}
 
 
 
-export { uploadOnCloudinary } // export utility
+
+export { uploadOnCloudinary, deleteFromCloudinary } // export utility

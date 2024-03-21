@@ -31,10 +31,17 @@ app.use(express.static('public'))
 // to handle cookies
 app.use(cookieParser())
 
+
+// ----------------------------------------------------------------------------------
+// routes
+
 import userRouter from './routes/userRouter.route.js';
+import videoRouter from './routes/videoRouter.route.js';
+import subscriptionRouter from './routes/subscription.route.js';
 
 app.use('/api/v1/users', userRouter);
-
+app.use('/api/v1/videos', videoRouter)
+app.use('/api/v1/subscriptions', subscriptionRouter)
 
 
 export { app }

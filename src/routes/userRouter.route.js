@@ -1,12 +1,22 @@
 import { Router } from "express";
 import { upload } from "../middlewares/multer.middleware.js";
 import { jwtVerify } from "../middlewares/auth.middleware.js";
-import { userRegister, loginUser, logOut, refreshAccessToken, changePassword } from "../controllers/user.controller.js";
+import { 
+    userRegister,
+    loginUser, 
+    logOut, 
+    refreshAccessToken, 
+    changePassword, 
+    getCurrentUser,
+    updateAccountDetails,
+    updateAvatar,
+    updateCoverImage
+} from "../controllers/user.controller.js";
 
 // creating a router instance
 const router = Router()
 
-// regiser route
+// register route
 router.route('/register').post(
     // using upload middleware this will anable form-data 
     // and we can upload files that can then be accessed using req.body object
@@ -48,4 +58,44 @@ router.route('/change-password').post(
     changePassword
 )
 
+// get current user
+router.route('/get-current-user').get(
+    jwtVerify,
+    getCurrentUser
+)
+
+// update account details
+router.route('/update-account-details').post(
+    jwtVerify,
+    upload.none(),
+    updateAccountDetails
+)
+
+// update avatar image
+router.route('/update-avatar').post(
+    jwtVerify,
+    upload.fields(
+        [
+            {
+                name : 'avatar',
+                maxCount : 1
+            }
+        ]
+    ),
+    updateAvatar
+)
+
+// update cover image
+router.route('/update-cover-image').post(
+    jwtVerify,
+    upload.fields(
+        [
+            {
+                name : 'coverImage',
+                maxCount : 1
+            }
+        ]
+    ),
+    updateCoverImage
+)
 export default router;

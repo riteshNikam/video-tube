@@ -2,12 +2,12 @@ import { asyncHandler } from "../utils/asyncHandler.util.js"
 import { ApiResponse } from '../utils/ApiResponse.util.js'
 import { ApiError } from '../utils/ApiError.util.js'
 import { User } from '../models/user.model.js'
-import { uploadOnCloudinary } from "../utils/cloudinary.util.js"
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.util.js"
 import jwt from "jsonwebtoken"
 
 // function to generate access and refresh tokens
 
-const generateAccessAndRefereshTokens = async(userId) =>{
+const generateAccessAndRefereshTokens = async(userId) => {
     try {
 
         const user = await User.findById(userId) // first get user by query
@@ -86,7 +86,7 @@ const userRegister = asyncHandler(
         const avatar = await uploadOnCloudinary(avatarLocalPath)  
         const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
-
+    
         // create user object 
         const user = await User.create({
             fullName : fullName,
@@ -144,6 +144,10 @@ const loginUser = asyncHandler(
         const user = await User.findOne({
             $or: [{userName}, {email}]
         })
+
+        if (!user) {
+            throw new ApiError(400, 'no such user exists.')
+        }
 
         // check if password is entered is correct
 
@@ -305,7 +309,163 @@ const getCurrentUser = asyncHandler(
     async(req, res) => {
         const user = req.user
 
-        return res.json(200, {user}, 'Current user fetched successfully')
+        console.log(user);
+
+        const currentUser = await User.findById(user._id).select("-password -refreshToken")
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    currentUser
+                },
+                "Current user fetched successfully."
+            )
+        )
+    }
+)
+
+const updateAccountDetails = asyncHandler(
+    async (req, res) => {
+        // get email and userName from frontend
+        const { email, userName } = req.body
+
+        //both fields are required
+        if (!(email && userName)) {
+            throw new ApiError(400, 'Both userName and email are required')
+        }
+
+        // update detailes
+        const updatedUser = await User.findByIdAndUpdate(
+            req.user?._id,
+            {
+                $set : {
+                    userName : userName,
+                    email : email
+                }
+            },
+            {
+                new : true
+            }
+        ).select("-password -refreshToken") // req.user is coming from middleware
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    updatedUser
+                },
+                "User details updated successfully"
+            )
+        )
+    }
+)
+
+const updateAvatar = asyncHandler (
+    async (req, res) => {
+        // getting public id
+        const public_id = req.user?.avatar.split('/').pop().split('.')[0]
+
+        // delete the resource using utility
+        const result = await deleteFromCloudinary(public_id)
+
+        if (!result) {
+            throw new ApiError(400, 'avatar not deleted')
+        }
+
+        // upload new avatar image
+        const newAvatarLocalPath = req.files?.avatar[0].path
+
+        if (!newAvatarLocalPath) {
+            throw new ApiError(400, "avatar file is required")
+        }
+
+        // upload image on cloudinary...
+        const response = await uploadOnCloudinary(newAvatarLocalPath)
+
+        // getting user and updating url...
+        const user = await User.findByIdAndUpdate(
+            req.user?._id,
+            {
+                $set : {
+                    avatar : response?.url
+                }
+            },
+            {
+                new : true
+            }
+        ).select("-password -refreshToken")
+
+        // return response.
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200, 
+                {
+                    user
+                },
+                'Avatar image updated successfully.'
+            )
+        )
+    }
+)
+
+const  updateCoverImage = asyncHandler(
+    async (req, res) => {
+
+        // unlike avatar image, cover image was not mandatory at the
+        // time of user registration
+        // so first check if we have coverImage in the database.
+
+        console.log(req.user)
+
+        if (req.user?.coverImage) { // if we have coverImage already then only we can delete it
+            const public_id = req.user?.coverImage.split('/').pop().split('.')[0]
+            const result = await deleteFromCloudinary(public_id)
+            if (!result) {
+                throw new ApiError(400, 'Cover Image not deleted.')
+            }
+        }
+
+        // upload new coverImage file
+
+        const newLocalCoverImageFile = req.files?.coverImage[0].path
+
+        if (!newLocalCoverImageFile) {
+            throw new ApiError(400, "coverImage file is required")
+        }
+
+        // upload image on cloudinary
+        const response = await uploadOnCloudinary(newLocalCoverImageFile)
+
+        // getting user and updating url...
+        const user = await User.findByIdAndUpdate(
+            req.user?._id,
+            {
+                $set : {
+                    coverImage : response?.url
+                }
+            },
+            {
+                new : true
+            }
+        ).select("-password -refreshToken")
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                {
+                    user
+                },
+                'Cover Image uploaded successfully'
+            )
+        )
     }
 )
 
@@ -346,4 +506,15 @@ const getUserChannelProfile = asyncHandler(
     }
 )
 
-export { userRegister, loginUser, logOut, refreshAccessToken, changePassword,  getCurrentUser };
+export { 
+    userRegister, 
+    loginUser, 
+    logOut, 
+    refreshAccessToken, 
+    changePassword, 
+    getCurrentUser,
+    updateAccountDetails,
+    updateAvatar,
+    updateCoverImage,
+    getUserChannelProfile
+};
