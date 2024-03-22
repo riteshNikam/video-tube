@@ -1,6 +1,6 @@
 import express from "express"
 import { jwtVerify } from "../middlewares/auth.middleware.js"
-import { subscribe, getSubscribers } from "../controllers/subscription.controller.js"
+import { subscribe, getSubscribers, getSubscribedChannel, unSubscribe } from "../controllers/subscription.controller.js"
 
 const router = express.Router()
 
@@ -15,6 +15,18 @@ router.route('/subscribe/c/:userName').post(
 router.route('/get-subscribers').get(
     jwtVerify,
     getSubscribers
+)
+
+// get all subscribed channels
+router.route('/get-subscribed-channels').get(
+    jwtVerify,
+    getSubscribedChannel
+)
+
+// unSubscribe channels
+router.route('/unSubscribe/:userName').delete(
+    jwtVerify,
+    unSubscribe
 )
 
 export default router;

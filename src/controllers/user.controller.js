@@ -479,29 +479,61 @@ const getUserChannelProfile = asyncHandler(
             throw new ApiError(400, 'Username is missing')
         }
 
-        // find username
-
-        const channel = await User.aggregate(
+        // aggregation pipeline to create channel profile.
+        const channelProfile = await User.aggregate(
             [
                 {
-                    $match : {
-                        userName : userName?.toLowerCase()
+                  '$match': {
+                    'userName': userName
+                  }
+                }, {
+                  '$lookup': {
+                    'from': 'subscriptions', 
+                    'localField': '_id', 
+                    'foreignField': 'channel', 
+                    'as': 'subscribing'
+                  }
+                }, {
+                  '$lookup': {
+                    'from': 'subscriptions', 
+                    'localField': '_id', 
+                    'foreignField': 'subscriber', 
+                    'as': 'subscribers'
+                  }
+                }, {
+                  '$addFields': {
+                    'numberOfSubscribers': {
+                      '$size': '$subscribers'
+                    }, 
+                    'numberOfChannlesSubscribedTo': {
+                      '$size': '$subscribing'
                     }
-                },
-                {
-                    $lookup : {
-                        from : "subscriptions",
-                        localField : "_id",
-                        foreignField : "_id",
-                        as : "subscribers"
-                    }
-                },
-                {
-                    $lookup : {
-                        from : "subscriptions"
-                    }
+                  }
+                }, {
+                  '$project': {
+                    '_id': 0, 
+                    'fullName': '$fullName', 
+                    'userName': '$userName', 
+                    'email': '$email',
+                    'avatar': '$avatar',
+                    'coverImage': '$coverImage',
+                    'subscribers': '$numberOfSubscribers', 
+                    'subscribing': '$numberOfChannlesSubscribedTo'
+                  }
                 }
             ]
+        )
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200, 
+                {
+                    channelProfile
+                },
+                "Channel Profile fetched successfully."
+            )
         )
     }
 )

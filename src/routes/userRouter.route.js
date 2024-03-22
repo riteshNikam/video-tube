@@ -10,7 +10,8 @@ import {
     getCurrentUser,
     updateAccountDetails,
     updateAvatar,
-    updateCoverImage
+    updateCoverImage,
+    getUserChannelProfile
 } from "../controllers/user.controller.js";
 
 // creating a router instance
@@ -38,6 +39,11 @@ router.route('/register').post(
 router.route('/login').post(
     upload.none(), // if we do not set this then req.body won't accept form-data
     loginUser
+)
+
+// get channel Profile
+router.route('/get-channel-profile/:userName').get(
+    getUserChannelProfile
 )
 
 // secure routes 

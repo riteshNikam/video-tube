@@ -19,6 +19,12 @@ const subscribe = asyncHandler(
         // get yserName from url params
         const { userName } = req.params
 
+        // user should not be allowed to subscribe to himself/herself
+        if (userName === req.user?.userName) {
+            throw new ApiError(400, 'Trying to subscribe to own channel.')
+        }
+
+
         // get channel from the database
         const channel = await User.findOne(
             {
@@ -29,6 +35,16 @@ const subscribe = asyncHandler(
         // if there is no channel of this userName throw error
         if (!channel) {
             throw new ApiError(400, 'No such channel exist.')
+        }
+
+        // a subscription document should not be repreated.
+        const checkSubs = await Subscription.findOne({
+            channel : channel,
+            subscriber : req.user?._id
+        })
+
+        if (checkSubs) {
+            throw new ApiError(400, 'Already Subscribed')
         }
 
         // insert subscription dociment in the collection.
@@ -92,7 +108,105 @@ const getSubscribers = asyncHandler(
     }
 )
 
+const getSubscribedChannel = asyncHandler(
+    async (req, res) => {
+
+        const subscribedChannel = await Subscription.aggregate(
+            [
+                {
+                  '$match': {
+                    'subscriber': req.user?._id
+                  }
+                }, {
+                  '$lookup': {
+                    'from': 'users', 
+                    'localField': 'channel', 
+                    'foreignField': '_id', 
+                    'as': 'channels'
+                  }
+                }, {
+                  '$unwind': '$channels'
+                }, {
+                  '$project': {
+                     '_id' : 0,
+                    'userName': '$channels.userName'
+                  }
+                }
+            ]
+        )
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200, 
+                {
+                    subscribedChannel
+                },
+                "Channels fetched succesfully."
+            )    
+        )
+    }
+)
+
+const unSubscribe = asyncHandler(
+    async (req, res) => {
+
+        const { userName } = req.params
+
+        // user should not be able to unSubscribe himself/herself
+        if (userName === req.user?.userName) {
+            throw new ApiError(400, "Trying to unsubscribe with oneself")
+        }
+
+        // get channel
+        const channel = await User.findOne(
+            {
+                userName : userName
+            }
+        )
+
+        if (!channel) {
+            throw new ApiError(400, "User doesn't exist or userName is incorrect.")
+        }
+
+        // subscribtion must already be presernt to be unsubscribed
+        const sub = await Subscription.findOne(
+            {
+                subscriber : req.user?._id,
+                channel : channel._id
+            }
+        )
+
+        if (!sub) {
+            throw new ApiError(400, "Not subscribed.")
+        }
+
+        // removing the subscription document with channel-subscriber pair
+        // will be considered as unSubscription
+        const response = await Subscription.deleteOne(
+            {
+                _id : sub._id
+            }
+        )
+
+        return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200, 
+                {
+                    response
+                },
+                "Unsubscribed successfully."
+            )
+        )
+    }
+)
+
 export { 
     subscribe,
-    getSubscribers
+    getSubscribers,
+    getSubscribedChannel,
+    unSubscribe
 }

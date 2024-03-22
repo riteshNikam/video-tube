@@ -2,6 +2,14 @@ import express from 'express'; // importing express from express
 import cors from 'cors' // used to handle cors - cross origin resources sharing
 import cookieParser from 'cookie-parser'; // used to handle cookies
 
+//-------------------------------------------------------------------------------------
+// configuring express
+// following middlware are used
+// cors
+// json
+// urlencoded
+// static
+
 
 const app = express() // express() method transpers all the methods into app
 
